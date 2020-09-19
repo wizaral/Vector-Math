@@ -15,10 +15,10 @@ public:
 
     template <class... Args>
     constexpr explicit Vector(Args &&... args) noexcept
-    : m_arr({args...}) {}
+    : m_arr({std::forward<Args>(args)...}) {}
 
     template <class... Args>
-    constexpr explicit Vector(std::tuple<Args ...> &&args) noexcept
+    constexpr Vector(std::tuple<Args ...> &&args) noexcept
     : m_arr(std::apply([](auto &&... x) constexpr {
         return std::array{std::forward<decltype(x)>(x)...};
     }, std::forward<std::tuple<Args ...>>(args))) {}
