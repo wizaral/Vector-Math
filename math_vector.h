@@ -6,7 +6,8 @@
 
 template <class T, std::size_t S, class = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
 class Vector final {
-    std::array<T, S> m_arr{};
+    using Arr = std::array<T, S>;
+    Arr m_arr{};
 
 public:
     constexpr Vector() noexcept = default;
@@ -55,68 +56,68 @@ public:
     }
 
     [[nodiscard]] constexpr Vector operator+(const Vector &v) const noexcept {
-        return Vector{operation(m_arr, v.m_arr, std::plus<>{})};
+        return Vector{operation(m_arr, v.m_arr, std::plus<>{}, std::make_index_sequence<S>{})};
     }
 
     [[nodiscard]] constexpr Vector operator-(const Vector &v) const noexcept {
-        return Vector{operation(m_arr, v.m_arr, std::minus<>{})};
+        return Vector{operation(m_arr, v.m_arr, std::minus<>{}, std::make_index_sequence<S>{})};
     }
 
     constexpr Vector &operator+=(const Vector &v) noexcept {
         operation(m_arr, v.m_arr, [](T &lhs, T rhs) constexpr {
             return lhs += rhs;
-        });
+        }, std::make_index_sequence<S>{});
         return *this;
     }
 
     constexpr Vector &operator-=(const Vector &v) noexcept {
         operation(m_arr, v.m_arr, [](T &lhs, T rhs) constexpr {
             return lhs -= rhs;
-        });
+        }, std::make_index_sequence<S>{});
         return *this;
     }
 
     [[nodiscard]] constexpr Vector operator+(T s) const noexcept {
-        return Vector{operation(m_arr, s, std::plus<>{})};
+        return Vector{operation(m_arr, s, std::plus<>{}, std::make_index_sequence<S>{})};
     }
 
     [[nodiscard]] constexpr Vector operator-(T s) const noexcept {
-        return Vector{operation(m_arr, s, std::minus<>{})};
+        return Vector{operation(m_arr, s, std::minus<>{}, std::make_index_sequence<S>{})};
     }
 
     [[nodiscard]] constexpr Vector operator*(T s) const noexcept {
-        return Vector{operation(m_arr, s, std::multiplies<>{})};
+        return Vector{operation(m_arr, s, std::multiplies<>{}, std::make_index_sequence<S>{})};
     }
 
     [[nodiscard]] constexpr Vector operator/(T s) const noexcept {
-        return Vector{operation(m_arr, s, std::divides<>{})};
+        return Vector{operation(m_arr, s, std::divides<>{}, std::make_index_sequence<S>{})};
     }
 
     constexpr Vector &operator+=(T s) noexcept {
         operation(m_arr, s, [](T &lhs, T rhs) constexpr {
             return lhs += rhs;
-        });
+        }, std::make_index_sequence<S>{});
         return *this;
     }
 
     constexpr Vector &operator-=(T s) noexcept {
         operation(m_arr, s, [](T &lhs, T rhs) constexpr {
             return lhs -= rhs;
-        });
+        }, std::make_index_sequence<S>{});
         return *this;
     }
 
     constexpr Vector &operator*=(T s) noexcept {
         operation(m_arr, s, [](T &lhs, T rhs) constexpr {
             return lhs *= rhs;
-        });
+        }, std::make_index_sequence<S>{});
         return *this;
     }
 
     constexpr Vector &operator/=(T s) noexcept {
         operation(m_arr, s, [](T &lhs, T rhs) constexpr {
             return lhs /= rhs;
-        });
+        }, std::make_index_sequence<S>{});
         return *this;
     }
 
@@ -126,7 +127,7 @@ public:
     }
 
     [[nodiscard]] constexpr T dist(const Vector &v) const {
-        return Vector{*this - v}.length();
+        return dist(*this, v);
     }
 
     [[nodiscard]] static constexpr T dist(const Vector &v1, const Vector &v2) {
@@ -138,101 +139,51 @@ public:
     }
 
     [[nodiscard]] constexpr T length_sqr() const noexcept {
-        return length_sqr(m_arr);
+        return dot(*this);
     }
 
     [[nodiscard]] constexpr T dot(const Vector &v) const noexcept {
-        return dot(m_arr, v.m_arr);
+        return dot(*this, v);
     }
 
     [[nodiscard]] static constexpr T dot(const Vector &v1, const Vector &v2) noexcept {
-        return dot(v1.m_arr, v2.m_arr);
+        return dot(v1.m_arr, v2.m_arr, std::make_index_sequence<S>{});
     }
 
     friend inline constexpr std::ostream &operator<<(std::ostream &os, const Vector &v) noexcept {
-        return print(os, as_tuple(v.m_arr), std::make_index_sequence<S>{});
+        return print(os, v.m_arr, std::make_index_sequence<S>{});
     }
 
 private:
     template <class... Args, std::size_t... I>
-    inline static constexpr std::ostream &print(std::ostream &os, const std::tuple<Args ...> &t, std::index_sequence<I...>) noexcept {
-        return ((os << std::get<I>(t) << ' '), ...);
+    inline static constexpr std::ostream &print(std::ostream &os, const Arr &a, std::index_sequence<I...>) noexcept {
+        return ((os << a[I] << ' '), ...);
     }
 
 // ================================================================================================================== //
 
     // operatorX(Vector, Vector)
-
-    inline static constexpr auto as_tuple(const std::array<T, S> &arr) noexcept {
-        return as_tuple(arr, std::make_index_sequence<S>{});
+    template <class Op, std::size_t... I>
+    inline static constexpr auto operation(const Arr &a1, const Arr &a2, Op &&op, std::index_sequence<I...>) noexcept {
+        return Arr{op(a1[I], a2[I])...};
     }
-
-    template <std::size_t... I>
-    inline static constexpr auto as_tuple(const std::array<T, S> &arr, std::index_sequence<I...>) noexcept {
-        return std::tie(arr[I]...);
-    }
-
-    template <class Op>
-    inline static constexpr auto operation(const std::array<T, S> &a1, const std::array<T, S> &a2, Op &&op) noexcept {
-        return operation(as_tuple(a1), as_tuple(a2), std::forward<Op>(op), std::make_index_sequence<S>{});
-    }
-
-    template <class Op, class... Args, std::size_t... I>
-    inline static constexpr auto operation(const std::tuple<Args ...> &t1, const std::tuple<Args ...> &t2, Op &&op, std::index_sequence<I...>) noexcept {
-        return std::array<T, S>{op(std::get<I>(t1), std::get<I>(t2))...};
-    }
-
-// ================================================================================================================== //
 
     // operatorX=(Vector, Vector)
-
-    inline static constexpr auto as_tuple(std::array<T, S> &arr) noexcept {
-        return as_tuple(arr, std::make_index_sequence<S>{});
+    template <class Op, std::size_t... I>
+    inline static constexpr void operation(Arr &a1, const Arr &a2, Op &&op, std::index_sequence<I...>) noexcept {
+        (op(a1[I], a2[I]), ...);
     }
-
-    template <std::size_t... I>
-    inline static constexpr auto as_tuple(std::array<T, S> &arr, std::index_sequence<I...>) noexcept {
-        return std::tie(arr[I]...);
-    }
-
-    template <class Op>
-    inline static constexpr void operation(std::array<T, S> &a1, const std::array<T, S> &a2, Op &&op) noexcept {
-        auto tie = as_tuple(a1);
-        operation(tie, as_tuple(a2), std::forward<Op>(op), std::make_index_sequence<S>{});
-    }
-
-    template <class Op, class... Args, class... Cargs, std::size_t... I>
-    inline static constexpr void operation(std::tuple<Args ...> &t1, const std::tuple<Cargs...> &t2, Op &&op, std::index_sequence<I...>) noexcept {
-        (op(std::get<I>(t1), std::get<I>(t2)), ...);
-    }
-
-// ================================================================================================================== //
 
     // operatorX(Vector, Scalar)
-
-    template <class Op>
-    inline static constexpr auto operation(const std::array<T, S> &a, T s, Op &&op) noexcept {
-        return operation(as_tuple(a), s, std::forward<Op>(op), std::make_index_sequence<S>{});
+    template <class Op, std::size_t... I>
+    inline static constexpr auto operation(const Arr &a, T s, Op &&op, std::index_sequence<I...>) noexcept {
+        return Arr{op(a[I], s)...};
     }
-
-    template <class Op, class... Args, std::size_t... I>
-    inline static constexpr auto operation(const std::tuple<Args ...> &t, T s, Op &&op, std::index_sequence<I...>) noexcept {
-        return std::array<T, S>{op(std::get<I>(t), s)...};
-    }
-
-// ================================================================================================================== //
 
     // operatorX=(Vector, Scalar)
-
-    template <class Op>
-    inline static constexpr void operation(std::array<T, S> &a, T s, Op &&op) noexcept {
-        auto tie = as_tuple(a);
-        operation(tie, s, std::forward<Op>(op), std::make_index_sequence<S>{});
-    }
-
-    template <class Op, class... Args, class... Cargs, std::size_t... I>
-    inline static constexpr void operation(std::tuple<Args ...> &t, T s, Op &&op, std::index_sequence<I...>) noexcept {
-        (op(std::get<I>(t), s), ...);
+    template <class Op, std::size_t... I>
+    inline static constexpr void operation(Arr &a, T s, Op &&op, std::index_sequence<I...>) noexcept {
+        (op(a[I], s), ...);
     }
 
 // ================================================================================================================== //
@@ -241,24 +192,9 @@ private:
         return std::sqrt(len_sqr);
     }
 
-    inline static constexpr T length_sqr(const std::array<T, S> &a) noexcept {
-        return length_sqr(as_tuple(a), std::make_index_sequence<S>{});
-    }
-
-    template <class... Args, std::size_t... I>
-    inline static constexpr T length_sqr(const std::tuple<Args ...> &t, std::index_sequence<I...>) noexcept {
-        return ((std::get<I>(t) * std::get<I>(t)) + ...);
-    }
-
-// ================================================================================================================== //
-
-    inline static constexpr T dot(const std::array<T, S> &a1, const std::array<T, S> &a2) noexcept {
-        return dot(as_tuple(a1), as_tuple(a2), std::make_index_sequence<S>{});
-    }
-
-    template <class... Args, std::size_t... I>
-    inline static constexpr T dot(const std::tuple<Args ...> &t1, const std::tuple<Args ...> &t2, std::index_sequence<I...>) noexcept {
-        return ((std::get<I>(t1) * std::get<I>(t2)) + ...);
+    template <std::size_t... I>
+    inline static constexpr T dot(const Arr &a1, const Arr &a2, std::index_sequence<I...>) noexcept {
+        return ((a1[I] * a2[I]) + ...);
     }
 };
 
