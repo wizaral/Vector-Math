@@ -23,6 +23,8 @@ public:
         return std::array{std::forward<decltype(x)>(x)...};
     }, std::forward<std::tuple<Args ...>>(args))) {}
 
+// ================================================================================================================== //
+
     constexpr Vector(const Vector &v) noexcept
     : m_arr(v.m_arr) {}
 
@@ -39,13 +41,17 @@ public:
         return *this;
     }
 
+// ================================================================================================================== //
+
     [[nodiscard]] constexpr T &operator[](std::size_t index) noexcept {
         return m_arr[index];
     }
 
-    [[nodiscard]] constexpr const T &operator[](std::size_t index) const noexcept {
+    [[nodiscard]] constexpr T operator[](std::size_t index) const noexcept {
         return m_arr[index];
     }
+
+// ================================================================================================================== //
 
     [[nodiscard]] constexpr std::array<T, S> &vector() noexcept {
         return m_arr;
@@ -55,6 +61,8 @@ public:
         return m_arr;
     }
 
+// ================================================================================================================== //
+
     [[nodiscard]] constexpr Vector operator+(const Vector &v) const noexcept {
         return Vector{operation(m_arr, v.m_arr, std::plus<>{}, std::make_index_sequence<S>{})};
     }
@@ -62,6 +70,8 @@ public:
     [[nodiscard]] constexpr Vector operator-(const Vector &v) const noexcept {
         return Vector{operation(m_arr, v.m_arr, std::minus<>{}, std::make_index_sequence<S>{})};
     }
+
+// ================================================================================================================== //
 
     constexpr Vector &operator+=(const Vector &v) noexcept {
         operation(m_arr, v.m_arr, [](T &lhs, T rhs) constexpr {
@@ -76,6 +86,8 @@ public:
         }, std::make_index_sequence<S>{});
         return *this;
     }
+
+// ================================================================================================================== //
 
     [[nodiscard]] constexpr Vector operator+(T s) const noexcept {
         return Vector{operation(m_arr, s, std::plus<>{}, std::make_index_sequence<S>{})};
@@ -92,6 +104,8 @@ public:
     [[nodiscard]] constexpr Vector operator/(T s) const noexcept {
         return Vector{operation(m_arr, s, std::divides<>{}, std::make_index_sequence<S>{})};
     }
+
+// ================================================================================================================== //
 
     constexpr Vector &operator+=(T s) noexcept {
         operation(m_arr, s, [](T &lhs, T rhs) constexpr {
@@ -121,10 +135,30 @@ public:
         return *this;
     }
 
+// ================================================================================================================== //
+
     constexpr Vector &normalize() noexcept {
         auto len = length_sqr();
-        return len == 0 ? *this : *this *= (1.l / length(len));
+        return len == 0 ? *this : *this *= (T{1} / length(len));
     }
+
+    [[nodiscard]] static constexpr Vector normalize(const Vector &v) noexcept {
+        auto len = v.length_sqr();
+        return len == 0 ? v : v * (T{1} / length(len));
+    }
+
+// ================================================================================================================== //
+
+    constexpr Vector &negate() noexcept {
+        operation(m_arr, std::negate<>{}, std::make_index_sequence<S>{});
+        return *this;
+    }
+
+    [[nodiscard]] constexpr Vector operator-() const noexcept {
+        return Vector{operation(m_arr, std::negate<>{}, std::make_index_sequence<S>{})};
+    }
+
+// ================================================================================================================== //
 
     [[nodiscard]] constexpr T dist(const Vector &v) const {
         return dist(*this, v);
@@ -134,12 +168,20 @@ public:
         return Vector{v1 - v2}.length();
     }
 
+// ================================================================================================================== //
+
     [[nodiscard]] constexpr T length() const noexcept {
         return length(length_sqr());
     }
 
     [[nodiscard]] constexpr T length_sqr() const noexcept {
         return dot(*this);
+    }
+
+// ================================================================================================================== //
+
+    [[nodiscard]] constexpr T operator*(const Vector &v) const noexcept {
+        return dot(v);
     }
 
     [[nodiscard]] constexpr T dot(const Vector &v) const noexcept {
@@ -149,6 +191,8 @@ public:
     [[nodiscard]] static constexpr T dot(const Vector &v1, const Vector &v2) noexcept {
         return dot(v1.m_arr, v2.m_arr, std::make_index_sequence<S>{});
     }
+
+// ================================================================================================================== //
 
     friend inline constexpr std::ostream &operator<<(std::ostream &os, const Vector &v) noexcept {
         return print(os, v.m_arr, std::make_index_sequence<S>{});
@@ -184,6 +228,18 @@ private:
     template <class Op, std::size_t... I>
     inline static constexpr void operation(Arr &a, T s, Op &&op, std::index_sequence<I...>) noexcept {
         (op(a[I], s), ...);
+    }
+
+    // operator-() const
+    template <class Op, std::size_t... I>
+    inline static constexpr auto operation(const Arr &a, Op &&op, std::index_sequence<I...>) noexcept {
+        return Arr{op(a[I])...};
+    }
+
+    // negate
+    template <class Op, std::size_t... I>
+    inline static constexpr void operation(Arr &a, Op &&op, std::index_sequence<I...>) noexcept {
+        ((a[I] = op(a[I])), ...);
     }
 
 // ================================================================================================================== //
