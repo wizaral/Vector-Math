@@ -31,15 +31,18 @@ public:
     constexpr Vector(Vector &&v) noexcept
     : m_arr(v.m_arr) {}
 
-    constexpr Vector &operator=(const Vector &v) noexcept {
+    constexpr Vector &operator=(const Vector &v) & noexcept {
         m_arr = v.m_arr;
         return *this;
     }
 
-    constexpr Vector &operator=(Vector &&v) noexcept {
+    constexpr Vector &operator=(Vector &&v) & noexcept {
         m_arr = v.m_arr;
         return *this;
     }
+
+    Vector &operator=(const Vector &v) && = delete;
+    Vector &operator=(Vector &&v) && = delete;
 
 // ================================================================================================================== //
 
